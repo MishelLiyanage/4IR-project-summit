@@ -1,18 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  Image,
-  Modal,
-  ActivityIndicator,
-} from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/theme';
+import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Image,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '../constants/theme';
+import { ErrorHandler } from '../services/errorHandler';
 
 interface CameraComponentProps {
   onPhotoTaken: (uri: string) => void;
@@ -64,8 +64,7 @@ export default function CameraComponent({ onPhotoTaken }: CameraComponentProps) 
           setShowCamera(false);
         }
       } catch (error) {
-        Alert.alert('Error', 'Failed to take picture. Please try again.');
-        console.error('Camera error:', error);
+        ErrorHandler.handleCameraError(error as Error);
       } finally {
         setIsLoading(false);
       }
@@ -85,7 +84,9 @@ export default function CameraComponent({ onPhotoTaken }: CameraComponentProps) 
         setCapturedImage(result.assets[0].uri);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image from gallery.');
+      ErrorHandler.showError('Failed to pick image from gallery.', {
+        title: 'Gallery Error',
+      });
       console.error('Gallery error:', error);
     }
   };
@@ -149,40 +150,42 @@ export default function CameraComponent({ onPhotoTaken }: CameraComponentProps) 
             style={styles.camera}
             facing={facing}
             mode="picture"
-          >
-            <View style={styles.cameraControls}>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowCamera(false)}
-              >
-                <Ionicons name="close" size={30} color={Colors.white} />
-              </TouchableOpacity>
+          />
+          
+          {/* Camera controls overlay */}
+          <View style={styles.cameraControls}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowCamera(false)}
+            >
+              <Ionicons name="close" size={30} color={Colors.white} />
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.flipButton}
-                onPress={toggleCameraFacing}
-              >
-                <Ionicons name="camera-reverse" size={30} color={Colors.white} />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.flipButton}
+              onPress={toggleCameraFacing}
+            >
+              <Ionicons name="camera-reverse" size={30} color={Colors.white} />
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.captureContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.captureButton,
-                  isLoading && styles.captureButtonDisabled
-                ]}
-                onPress={takePicture}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="large" color={Colors.white} />
-                ) : (
-                  <View style={styles.captureButtonInner} />
-                )}
-              </TouchableOpacity>
-            </View>
-          </CameraView>
+          {/* Capture button overlay */}
+          <View style={styles.captureContainer}>
+            <TouchableOpacity
+              style={[
+                styles.captureButton,
+                isLoading && styles.captureButtonDisabled
+              ]}
+              onPress={takePicture}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="large" color={Colors.white} />
+              ) : (
+                <View style={styles.captureButtonInner} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </View>
@@ -286,15 +289,21 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     flex: 1,
+    position: 'relative',
   },
   camera: {
     flex: 1,
   },
   cameraControls: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingTop: 60,
     paddingHorizontal: Spacing.lg,
+    zIndex: 1,
   },
   closeButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -309,7 +318,10 @@ const styles = StyleSheet.create({
   captureContainer: {
     position: 'absolute',
     bottom: 50,
-    alignSelf: 'center',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1,
   },
   captureButton: {
     width: 80,

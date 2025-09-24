@@ -1,16 +1,20 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
   ActivityIndicator,
+  Alert,
   Image,
+  StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../constants/theme';
+import { API_CONFIG, ERROR_MESSAGES } from '../constants/config';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '../constants/theme';
+import { ErrorHandler } from '../services/errorHandler';
+import { uploadService } from '../services/uploadService';
+import type { UploadProgress } from '../types/api';
 
 interface UploadComponentProps {
   imageUri: string;
@@ -26,37 +30,49 @@ export default function UploadComponent({
   const [isUploading, setIsUploading] = useState(false);
   const [description, setDescription] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<UploadProgress['stage']>('preparing');
 
-  // Simulated upload function - replace with your actual upload logic
-  const simulateUpload = async () => {
+  // Real upload function using the upload service
+  const performUpload = async () => {
     setIsUploading(true);
     setUploadProgress(0);
+    setUploadStage('preparing');
 
     try {
-      // Simulate upload progress
-      for (let i = 0; i <= 100; i += 10) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        setUploadProgress(i);
-      }
+      const uploadResult = await uploadService.uploadImageWithRetry(
+        imageUri,
+        {
+          description: description.trim(),
+          tags: [], // You can add tag input later if needed
+          metadata: {
+            uploadSource: 'mobile_app',
+          },
+        },
+        {
+          onProgress: (progress: UploadProgress) => {
+            setUploadProgress(progress.percentage);
+            setUploadStage(progress.stage);
+          },
+          maxRetries: 3,
+          validateFile: true,
+        }
+      );
 
-      // Here you would implement your actual upload logic
-      // Example: upload to Firebase, AWS S3, or your backend server
-      
       Alert.alert(
         'Upload Successful!',
-        'Your label photo has been uploaded successfully.',
+        `Your label photo has been uploaded successfully.${
+          uploadResult.processing?.extractedText 
+            ? `\n\nExtracted text: "${uploadResult.processing.extractedText}"` 
+            : ''
+        }`,
         [{ text: 'OK', onPress: onUploadComplete }]
       );
     } catch (error) {
-      Alert.alert(
-        'Upload Failed',
-        'Failed to upload the image. Please try again.',
-        [{ text: 'OK' }]
-      );
-      console.error('Upload error:', error);
+      ErrorHandler.handleUploadError(error as Error, performUpload);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      setUploadStage('preparing');
     }
   };
 
@@ -64,7 +80,7 @@ export default function UploadComponent({
     if (!description.trim()) {
       Alert.alert(
         'Description Required',
-        'Please add a description for your label photo.',
+        ERROR_MESSAGES.UPLOAD.NO_DESCRIPTION,
         [{ text: 'OK' }]
       );
       return;
@@ -75,7 +91,7 @@ export default function UploadComponent({
       'Are you sure you want to upload this label photo?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Upload', onPress: simulateUpload },
+        { text: 'Upload', onPress: performUpload },
       ]
     );
   };
@@ -112,7 +128,11 @@ export default function UploadComponent({
         {isUploading && (
           <View style={styles.progressContainer}>
             <Text style={styles.progressText}>
-              Uploading... {uploadProgress}%
+              {uploadStage === 'preparing' && 'Preparing upload...'}
+              {uploadStage === 'uploading' && `Uploading... ${Math.round(uploadProgress)}%`}
+              {uploadStage === 'processing' && 'Processing image...'}
+              {uploadStage === 'completed' && 'Upload completed!'}
+              {uploadStage === 'error' && 'Upload failed'}
             </Text>
             <View style={styles.progressBar}>
               <View 
@@ -122,11 +142,29 @@ export default function UploadComponent({
                 ]} 
               />
             </View>
-            <ActivityIndicator 
-              size="large" 
-              color={Colors.primary} 
-              style={styles.loadingIndicator}
-            />
+            {uploadStage !== 'completed' && uploadStage !== 'error' && (
+              <ActivityIndicator 
+                size="large" 
+                color={Colors.primary} 
+                style={styles.loadingIndicator}
+              />
+            )}
+            {uploadStage === 'completed' && (
+              <Ionicons 
+                name="checkmark-circle" 
+                size={32} 
+                color={Colors.primary} 
+                style={styles.loadingIndicator}
+              />
+            )}
+            {uploadStage === 'error' && (
+              <Ionicons 
+                name="close-circle" 
+                size={32} 
+                color={Colors.error} 
+                style={styles.loadingIndicator}
+              />
+            )}
           </View>
         )}
 
@@ -158,6 +196,14 @@ export default function UploadComponent({
       </View>
 
       <View style={styles.infoContainer}>
+        {API_CONFIG.MOCK_MODE && (
+          <View style={[styles.infoItem, styles.mockModeInfo]}>
+            <Ionicons name="construct" size={20} color={Colors.warning} />
+            <Text style={[styles.infoText, styles.mockModeText]}>
+              Demo Mode: Using simulated upload (no real backend)
+            </Text>
+          </View>
+        )}
         <View style={styles.infoItem}>
           <Ionicons name="information-circle" size={20} color={Colors.secondary} />
           <Text style={styles.infoText}>
@@ -316,5 +362,15 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.small,
     color: Colors.secondary,
     flex: 1,
+  },
+  mockModeInfo: {
+    backgroundColor: Colors.warning + '20', // 20% opacity
+    borderRadius: BorderRadius.small,
+    padding: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  mockModeText: {
+    color: Colors.warning,
+    fontWeight: Typography.weights.semibold,
   },
 });
