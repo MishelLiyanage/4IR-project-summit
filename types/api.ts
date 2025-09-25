@@ -56,6 +56,20 @@ export interface UploadedImage {
 }
 
 export interface UploadResponse {
+  id: string;
+  filename: string;
+  url: string;
+  extractedText: string;
+  confidence?: number;
+  processingTimeMs?: number;
+  metadata?: Record<string, any>;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Legacy upload response (kept for compatibility)
+export interface LegacyUploadResponse {
   image: UploadedImage;
   processing?: {
     status: 'pending' | 'processing' | 'completed' | 'failed';

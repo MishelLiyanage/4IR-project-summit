@@ -172,19 +172,18 @@ export class UploadService {
     // Convert image to base64
     const imageData = await this.convertImageToBase64(imageUri);
 
-    // Create upload payload
+    // Create upload payload matching backend's expected format
     const payload = {
-      image: {
-        data: imageData.base64,
-        mimeType: imageData.mimeType,
+      encoded_image: imageData.base64,
+      media_type: imageData.mimeType,
+      // Additional metadata (optional)
+      metadata: {
         fileName: imageData.fileName,
         size: imageData.size,
-      },
-      tags: uploadRequest.tags || [],
-      metadata: {
-        ...uploadRequest.metadata,
+        tags: uploadRequest.tags || [],
         deviceInfo: this.getDeviceInfo(),
         uploadedAt: new Date().toISOString(),
+        ...uploadRequest.metadata,
       },
     };
 
@@ -256,23 +255,23 @@ export class UploadService {
       await new Promise(resolve => setTimeout(resolve, 800));
     }
 
-    // Return mock response
+    // Return mock response in new format
     return {
-      image: {
-        id: `mock_${Date.now()}`,
-        filename: `label_${Date.now()}.jpg`,
+      id: `mock_${Date.now()}`,
+      filename: `label_${Date.now()}.jpg`,
+      url: imageUri, // Use original URI for display
+      extractedText: 'Sample Label Text - This is a mock response for testing without backend connection',
+      confidence: 0.85,
+      processingTimeMs: 2500,
+      metadata: {
         originalName: imageUri.split('/').pop() || 'image.jpg',
         size: 1024000, // 1MB mock size
         mimeType: 'image/jpeg',
-        url: imageUri, // Use original URI for display
-        uploadedAt: new Date().toISOString(),
+        isMockResponse: true,
       },
-      processing: {
-        status: 'completed',
-        extractedText: 'Sample Label Text - This is a mock response',
-        confidence: 0.85,
-        processingTime: 2500,
-      },
+      tags: uploadRequest.tags || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   }
 
@@ -347,7 +346,7 @@ export class UploadService {
 
       try {
         const response = await this.apiService.post<UploadResponse>(
-          API_CONFIG.ENDPOINTS.UPLOAD_LABEL,
+          API_CONFIG.ENDPOINTS.EXTRACT_TEXT,
           uploadPayload,
           { timeout }
         );
@@ -360,14 +359,33 @@ export class UploadService {
           total: 100,
           percentage: 100,
           stage: 'completed',
-          message: 'Upload completed successfully!',
+          message: 'Text extraction completed successfully!',
         });
 
-        if (!response.success || !response.data) {
-          throw new Error(response.message || 'Upload failed');
+        // Backend returns: { status: 'success', status_code: 200, data: { extracted_text: '...', ... } }
+        if (!response.success && response.data?.status !== 'success') {
+          throw new Error(response.message || response.data?.error?.message || 'Text extraction failed');
         }
 
-        return response.data;
+        // Transform backend response to frontend format
+        const backendData = response.data?.data || response.data;
+        const transformedResponse: UploadResponse = {
+          id: `extraction_${Date.now()}`,
+          filename: uploadRequest.metadata?.fileName || 'image.jpg',
+          url: imageUri, // Keep original image URI
+          extractedText: backendData.extracted_text || '',
+          confidence: backendData.confidence,
+          processingTimeMs: backendData.processing_time_ms,
+          metadata: {
+            ...backendData.image_metadata,
+            uploadedAt: new Date().toISOString(),
+          },
+          tags: uploadRequest.tags || [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        return transformedResponse;
       } finally {
         clearInterval(progressInterval);
       }
@@ -414,7 +432,7 @@ export class UploadService {
     }
 
     try {
-      const response = await this.apiService.get(API_CONFIG.ENDPOINTS.HEALTH, {
+      const response = await this.apiService.get(API_CONFIG.ENDPOINTS.IMAGE_HEALTH, {
         timeout: 5000, // 5 seconds timeout for health check
       });
       return response.success;

@@ -57,10 +57,14 @@ export default function UploadComponent({
       );
 
       Alert.alert(
-        'Upload Successful!',
-        `Your label photo has been uploaded successfully.${
-          uploadResult.processing?.extractedText 
-            ? `\n\nExtracted text: "${uploadResult.processing.extractedText}"` 
+        'Text Extraction Successful!',
+        `Text has been extracted from your label photo successfully.${
+          uploadResult.extractedText 
+            ? `\n\nExtracted text: "${uploadResult.extractedText}"` 
+            : ''
+        }${
+          uploadResult.confidence 
+            ? `\n\nConfidence: ${Math.round(uploadResult.confidence * 100)}%` 
             : ''
         }`,
         [{ text: 'OK', onPress: onUploadComplete }]

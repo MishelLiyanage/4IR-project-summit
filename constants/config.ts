@@ -5,17 +5,19 @@
 export const API_CONFIG = {
   // Base URL for the API - update this with your actual backend URL
   BASE_URL: __DEV__ 
-    ? 'http://localhost:3000/api'  // Development
-    : 'https://your-production-api.com/api', // Production
+    ? 'http://localhost:8000'  // Development - your 4IR backend
+    : 'https://your-production-api.com', // Production
   
   // Mock mode for testing without backend
-  MOCK_MODE: true, // Set to false when you have a real backend
+  MOCK_MODE: false, // Set to true for testing without backend
 
   // API endpoints
   ENDPOINTS: {
-    UPLOAD_LABEL: '/labels/upload',
-    LABELS: '/labels',
+    EXTRACT_TEXT: '/images/extract-text',
+    IMAGE_HEALTH: '/images/health',
     HEALTH: '/health',
+    UPLOAD_LABEL: '/labels/upload', // Legacy endpoint
+    LABELS: '/labels', // Legacy endpoint
   },
 
   // Request timeouts (in milliseconds)

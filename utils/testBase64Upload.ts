@@ -1,6 +1,5 @@
 /**
- * Test utility for base64 upload functionality
- * Run this to test the base64 conversion and upload process
+ * Test utility to check backend connection and API functionality
  */
 
 import { API_CONFIG } from '../constants/config';
@@ -57,20 +56,19 @@ export async function testBase64Upload() {
     
     console.log('\n✅ Upload completed successfully!');
     console.log('📋 Result summary:');
-    console.log(`   Image ID: ${result.image.id}`);
-    console.log(`   Filename: ${result.image.filename}`);
-    console.log(`   Size: ${result.image.size} bytes`);
-    console.log(`   MIME Type: ${result.image.mimeType}`);
-    console.log(`   Upload Time: ${result.image.uploadedAt}`);
+    console.log(`   Response ID: ${result.id}`);
+    console.log(`   Filename: ${result.filename}`);
+    console.log(`   Extracted Text: "${result.extractedText}"`);
+    console.log(`   Created At: ${result.createdAt}`);
     
-    if (result.processing) {
-      console.log(`   Processing Status: ${result.processing.status}`);
-      if (result.processing.extractedText) {
-        console.log(`   Extracted Text: "${result.processing.extractedText}"`);
-      }
-      if (result.processing.confidence) {
-        console.log(`   Confidence: ${(result.processing.confidence * 100).toFixed(1)}%`);
-      }
+    if (result.confidence) {
+      console.log(`   Confidence: ${(result.confidence * 100).toFixed(1)}%`);
+    }
+    if (result.processingTimeMs) {
+      console.log(`   Processing Time: ${result.processingTimeMs}ms`);
+    }
+    if (result.metadata) {
+      console.log(`   Metadata:`, result.metadata);
     }
     
     console.log('\n📈 Progress Log:');
