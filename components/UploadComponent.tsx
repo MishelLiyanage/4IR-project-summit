@@ -6,11 +6,10 @@ import {
   Image,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { API_CONFIG, ERROR_MESSAGES } from '../constants/config';
+import { API_CONFIG } from '../constants/config';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '../constants/theme';
 import { ErrorHandler } from '../services/errorHandler';
 import { uploadService } from '../services/uploadService';
@@ -28,7 +27,6 @@ export default function UploadComponent({
   onCancel 
 }: UploadComponentProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [description, setDescription] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStage, setUploadStage] = useState<UploadProgress['stage']>('preparing');
 
@@ -42,10 +40,10 @@ export default function UploadComponent({
       const uploadResult = await uploadService.uploadImageWithRetry(
         imageUri,
         {
-          description: description.trim(),
           tags: [], // You can add tag input later if needed
           metadata: {
             uploadSource: 'mobile_app',
+            timestamp: new Date().toISOString(),
           },
         },
         {
@@ -77,15 +75,6 @@ export default function UploadComponent({
   };
 
   const handleUpload = () => {
-    if (!description.trim()) {
-      Alert.alert(
-        'Description Required',
-        ERROR_MESSAGES.UPLOAD.NO_DESCRIPTION,
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
     Alert.alert(
       'Upload Photo',
       'Are you sure you want to upload this label photo?',
@@ -113,18 +102,6 @@ export default function UploadComponent({
       </View>
 
       <View style={styles.formContainer}>
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Describe what's on this label..."
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={3}
-          placeholderTextColor={Colors.lightGray}
-          editable={!isUploading}
-        />
-
         {isUploading && (
           <View style={styles.progressContainer}>
             <Text style={styles.progressText}>
@@ -266,23 +243,6 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     paddingHorizontal: Spacing.md,
-  },
-  label: {
-    fontSize: Typography.sizes.medium,
-    fontWeight: Typography.weights.semibold,
-    color: Colors.darkGray,
-    marginBottom: Spacing.sm,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-    borderRadius: BorderRadius.medium,
-    padding: Spacing.md,
-    fontSize: Typography.sizes.medium,
-    color: Colors.darkGray,
-    backgroundColor: Colors.white,
-    textAlignVertical: 'top',
-    minHeight: 80,
   },
   progressContainer: {
     marginTop: Spacing.lg,
