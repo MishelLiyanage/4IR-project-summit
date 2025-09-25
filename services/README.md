@@ -1,6 +1,16 @@
 # Services Architecture Documentation
+### **Upload Service (`uploadService.ts`)**
 
-This directory contains the service layer for the Label Photo Scanner app, implementing a clean architecture pattern for handling API communications and business logic.
+Specialized service for handling image uploads as base64 with progress tracking, validation, and retry logic.
+
+**Features:**
+- Image file validation (size, format)
+- Base64 conversion with progress tracking
+- Progress tracking with callbacks
+- Retry mechanism with exponential backoff
+- Device information collection
+- JSON payload construction for base64 uploads
+- Comprehensive error handlingctory contains the service layer for the Label Photo Scanner app, implementing a clean architecture pattern for handling API communications and business logic.
 
 ## Architecture Overview
 
@@ -55,7 +65,7 @@ import { uploadService } from './services/uploadService';
 
 const result = await uploadService.uploadImage(
   imageUri,
-  { description: 'Label description' },
+  { tags: ['product', 'inventory'] },
   {
     onProgress: (progress) => console.log(progress.percentage),
     maxRetries: 3,
@@ -148,12 +158,20 @@ The upload service expects the following API contract:
 
 **Request:**
 - Method: `POST`
-- Content-Type: `multipart/form-data`
+- Content-Type: `application/json`
 - Body:
-  - `image`: File (required)
-  - `description`: String (required)
-  - `tags`: JSON string array (optional)
-  - `metadata`: JSON string (optional)
+  ```json
+  {
+    "image": {
+      "data": "base64-encoded-image-data",
+      "mimeType": "image/jpeg",
+      "fileName": "photo.jpg",
+      "size": 1024000
+    },
+    "tags": ["tag1", "tag2"],
+    "metadata": { "uploadSource": "mobile_app" }
+  }
+  ```
 
 **Response:**
 ```json

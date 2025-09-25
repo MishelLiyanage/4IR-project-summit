@@ -126,43 +126,69 @@ export class UploadService {
   }
 
   /**
-   * Create FormData for image upload
+   * Convert image to base64
    */
-  private async createUploadFormData(
+  private async convertImageToBase64(imageUri: string): Promise<{
+    base64: string;
+    mimeType: string;
+    fileName: string;
+    size: number;
+  }> {
+    try {
+      // Get file info
+      const fileInfo = await FileSystem.getInfoAsync(imageUri);
+      if (!fileInfo.exists) {
+        throw new Error('Image file does not exist');
+      }
+
+      // Get file name and extension
+      const fileName = imageUri.split('/').pop() || `image_${Date.now()}.jpg`;
+      const fileExtension = fileName.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeType = this.getMimeTypeFromExtension(fileExtension);
+
+      // Convert to base64
+      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      return {
+        base64,
+        mimeType,
+        fileName,
+        size: fileInfo.size || 0,
+      };
+    } catch (error) {
+      throw new Error(`Failed to convert image to base64: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Create JSON payload for image upload (with base64)
+   */
+  private async createUploadPayload(
     imageUri: string,
     uploadRequest: UploadRequest
-  ): Promise<FormData> {
-    const formData = new FormData();
+  ): Promise<any> {
+    // Convert image to base64
+    const imageData = await this.convertImageToBase64(imageUri);
 
-    // Get file name from URI
-    const fileName = imageUri.split('/').pop() || `image_${Date.now()}.jpg`;
-    const fileExtension = fileName.split('.').pop()?.toLowerCase() || 'jpg';
-    const mimeType = this.getMimeTypeFromExtension(fileExtension);
-
-    // Add image file
-    formData.append('image', {
-      uri: imageUri,
-      type: mimeType,
-      name: fileName,
-    } as any);
-
-    // Add description
-    formData.append('description', uploadRequest.description);
-
-    // Add tags if provided
-    if (uploadRequest.tags && uploadRequest.tags.length > 0) {
-      formData.append('tags', JSON.stringify(uploadRequest.tags));
-    }
-
-    // Add metadata
-    const metadata = {
-      ...uploadRequest.metadata,
-      deviceInfo: this.getDeviceInfo(),
-      uploadedAt: new Date().toISOString(),
+    // Create upload payload
+    const payload = {
+      image: {
+        data: imageData.base64,
+        mimeType: imageData.mimeType,
+        fileName: imageData.fileName,
+        size: imageData.size,
+      },
+      tags: uploadRequest.tags || [],
+      metadata: {
+        ...uploadRequest.metadata,
+        deviceInfo: this.getDeviceInfo(),
+        uploadedAt: new Date().toISOString(),
+      },
     };
-    formData.append('metadata', JSON.stringify(metadata));
 
-    return formData;
+    return payload;
   }
 
   /**
@@ -209,12 +235,12 @@ export class UploadService {
     uploadRequest: UploadRequest,
     onProgress?: (progress: UploadProgress) => void
   ): Promise<UploadResponse> {
-    // Simulate upload progress
+    // Simulate upload progress with base64 conversion
     const stages = [
-      { stage: 'preparing' as const, percentage: 10, message: 'Preparing upload...' },
-      { stage: 'uploading' as const, percentage: 30, message: 'Uploading image...' },
-      { stage: 'uploading' as const, percentage: 60, message: 'Uploading image...' },
-      { stage: 'uploading' as const, percentage: 85, message: 'Processing image...' },
+      { stage: 'preparing' as const, percentage: 15, message: 'Converting image to base64...' },
+      { stage: 'uploading' as const, percentage: 35, message: 'Uploading base64 data...' },
+      { stage: 'uploading' as const, percentage: 65, message: 'Uploading base64 data...' },
+      { stage: 'uploading' as const, percentage: 85, message: 'Processing on server...' },
       { stage: 'processing' as const, percentage: 95, message: 'Analyzing label...' },
       { stage: 'completed' as const, percentage: 100, message: 'Upload completed!' },
     ];
@@ -288,41 +314,41 @@ export class UploadService {
         return await this.mockUpload(imageUri, uploadRequest, onProgress);
       }
 
-      // Create FormData for real upload
+      // Convert image to base64 and create payload
       onProgress?.({
         loaded: 10,
         total: 100,
         percentage: 10,
         stage: 'preparing',
-        message: 'Preparing image data...',
+        message: 'Converting image to base64...',
       });
 
-      const formData = await this.createUploadFormData(imageUri, uploadRequest);
+      const uploadPayload = await this.createUploadPayload(imageUri, uploadRequest);
 
       // Start upload
       onProgress?.({
-        loaded: 20,
+        loaded: 30,
         total: 100,
-        percentage: 20,
+        percentage: 30,
         stage: 'uploading',
-        message: 'Uploading image...',
+        message: 'Uploading base64 data...',
       });
 
       // Simulate progress during upload (in real implementation, you might get actual progress)
       const progressInterval = setInterval(() => {
         onProgress?.({
-          loaded: Math.min(80, Math.random() * 60 + 20),
+          loaded: Math.min(85, Math.random() * 40 + 30),
           total: 100,
-          percentage: Math.min(80, Math.random() * 60 + 20),
+          percentage: Math.min(85, Math.random() * 40 + 30),
           stage: 'uploading',
-          message: 'Uploading image...',
+          message: 'Uploading base64 data...',
         });
       }, 500);
 
       try {
-        const response = await this.apiService.upload<UploadResponse>(
+        const response = await this.apiService.post<UploadResponse>(
           API_CONFIG.ENDPOINTS.UPLOAD_LABEL,
-          formData,
+          uploadPayload,
           { timeout }
         );
 

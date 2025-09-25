@@ -26,7 +26,8 @@ export const API_CONFIG = {
 
   // Upload configuration
   UPLOAD: {
-    MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB in bytes
+    MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB in bytes (before base64 encoding)
+    MAX_BASE64_SIZE: 14 * 1024 * 1024, // ~13.3MB (after base64 encoding, +33% overhead)
     ALLOWED_FORMATS: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
     QUALITY: 0.8,
   },
@@ -62,7 +63,6 @@ export const ERROR_MESSAGES = {
     FILE_TOO_LARGE: `File size exceeds ${API_CONFIG.UPLOAD.MAX_FILE_SIZE / (1024 * 1024)}MB limit.`,
     INVALID_FORMAT: 'Invalid file format. Please select a valid image file.',
     UPLOAD_FAILED: 'Failed to upload image. Please try again.',
-    NO_DESCRIPTION: 'Please add a description for your label photo.',
   },
   CAMERA: {
     PERMISSION_DENIED: 'Camera permission is required to take photos.',

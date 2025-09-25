@@ -28,7 +28,18 @@ export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 // Upload-related interfaces
 export interface UploadRequest {
-  description: string;
+  tags?: string[];
+  metadata?: Record<string, any>;
+}
+
+// Base64 upload request interface
+export interface Base64UploadRequest {
+  image: {
+    data: string; // base64 encoded image data
+    mimeType: string; // e.g., 'image/jpeg', 'image/png'
+    fileName: string; // original filename
+    size: number; // file size in bytes
+  };
   tags?: string[];
   metadata?: Record<string, any>;
 }
@@ -57,7 +68,6 @@ export interface UploadResponse {
 // Label-related interfaces
 export interface Label {
   id: string;
-  description: string;
   image: UploadedImage;
   tags: string[];
   extractedText?: string;
@@ -73,7 +83,6 @@ export interface Label {
 }
 
 export interface CreateLabelRequest {
-  description: string;
   tags?: string[];
   metadata?: {
     deviceInfo?: DeviceInfo;
@@ -82,7 +91,6 @@ export interface CreateLabelRequest {
 }
 
 export interface UpdateLabelRequest {
-  description?: string;
   tags?: string[];
   status?: 'active' | 'archived' | 'deleted';
 }
