@@ -1,21 +1,24 @@
-/**
- * Upload service for handling image uploads to the backend
- */
-
-import * as FileSystem from 'expo-file-system/legacy';
-import { Platform } from 'react-native';
-import { API_CONFIG, APP_CONFIG, ERROR_MESSAGES } from '../constants/config';
+import * as FileSystem from "expo-file-system/legacy";
+import { Platform } from "react-native";
+import { API_CONFIG, APP_CONFIG, ERROR_MESSAGES } from "../constants/config";
 import type {
-    ApiErrorType,
-    DeviceInfo,
-    FileValidation,
-    ServiceError,
-    UploadOptions,
-    UploadProgress,
-    UploadRequest,
-    UploadResponse,
-} from '../types/api';
-import { ApiError, ApiService } from './api';
+  ApiErrorType,
+  DeviceInfo,
+  FileValidation,
+  ServiceError,
+  UploadOptions,
+  UploadProgress,
+  UploadRequest,
+  UploadResponse,
+} from "../types/api";
+import { ApiError, ApiService } from "./api";
+
+type BackendResponse = {
+  status: string;
+  status_code: number;
+  message?: string;
+  data?: any;
+};
 
 export class UploadService {
   private apiService: ApiService;
@@ -48,9 +51,9 @@ export class UploadService {
     try {
       // Get file info
       const fileInfo = await FileSystem.getInfoAsync(imageUri);
-      
+
       if (!fileInfo.exists) {
-        errors.push('File does not exist');
+        errors.push("File does not exist");
         return { isValid: false, errors, warnings };
       }
 
@@ -61,34 +64,37 @@ export class UploadService {
 
       // For React Native, we might not have direct MIME type access
       // We'll infer from file extension or trust the file picker
-      const fileName = imageUri.split('/').pop() || '';
-      const fileExtension = fileName.split('.').pop()?.toLowerCase();
-      
-      const validExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+      const fileName = imageUri.split("/").pop() || "";
+      const fileExtension = fileName.split(".").pop()?.toLowerCase();
+
+      const validExtensions = ["jpg", "jpeg", "png", "webp"];
       if (fileExtension && !validExtensions.includes(fileExtension)) {
         errors.push(ERROR_MESSAGES.UPLOAD.INVALID_FORMAT);
       }
 
       // Add warnings for large files (but not errors)
-      if (fileInfo.size && fileInfo.size > 5 * 1024 * 1024) { // 5MB
-        warnings.push('Large file size may take longer to upload');
+      if (fileInfo.size && fileInfo.size > 5 * 1024 * 1024) {
+        // 5MB
+        warnings.push("Large file size may take longer to upload");
       }
 
       return {
         isValid: errors.length === 0,
         errors,
         warnings,
-        fileInfo: fileInfo.exists ? {
-          name: fileName,
-          size: fileInfo.size || 0,
-          type: this.getMimeTypeFromExtension(fileExtension || ''),
-          lastModified: fileInfo.modificationTime || Date.now(),
-        } : undefined,
+        fileInfo: fileInfo.exists
+          ? {
+              name: fileName,
+              size: fileInfo.size || 0,
+              type: this.getMimeTypeFromExtension(fileExtension || ""),
+              lastModified: fileInfo.modificationTime || Date.now(),
+            }
+          : undefined,
       };
     } catch (error) {
       return {
         isValid: false,
-        errors: ['Failed to validate file'],
+        errors: ["Failed to validate file"],
         warnings,
       };
     }
@@ -99,12 +105,12 @@ export class UploadService {
    */
   private getMimeTypeFromExtension(extension: string): string {
     const mimeTypes: Record<string, string> = {
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'png': 'image/png',
-      'webp': 'image/webp',
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      webp: "image/webp",
     };
-    return mimeTypes[extension.toLowerCase()] || 'image/jpeg';
+    return mimeTypes[extension.toLowerCase()] || "image/jpeg";
   }
 
   /**
@@ -112,12 +118,13 @@ export class UploadService {
    */
   private getDeviceInfo(): DeviceInfo {
     return {
-      platform: Platform.OS as 'ios' | 'android' | 'web',
+      platform: Platform.OS as "ios" | "android" | "web",
       osVersion: Platform.Version?.toString(),
       appVersion: APP_CONFIG.VERSION,
-      deviceModel: Platform.OS === 'ios' 
-        ? (Platform.constants as any)?.deviceName 
-        : (Platform.constants as any)?.model || 'Unknown',
+      deviceModel:
+        Platform.OS === "ios"
+          ? (Platform.constants as any)?.deviceName
+          : (Platform.constants as any)?.model || "Unknown",
       screenDimensions: {
         width: 0, // We'll get this from Dimensions API if needed
         height: 0,
@@ -138,12 +145,12 @@ export class UploadService {
       // Get file info
       const fileInfo = await FileSystem.getInfoAsync(imageUri);
       if (!fileInfo.exists) {
-        throw new Error('Image file does not exist');
+        throw new Error("Image file does not exist");
       }
 
       // Get file name and extension
-      const fileName = imageUri.split('/').pop() || `image_${Date.now()}.jpg`;
-      const fileExtension = fileName.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = imageUri.split("/").pop() || `image_${Date.now()}.jpg`;
+      const fileExtension = fileName.split(".").pop()?.toLowerCase() || "jpg";
       const mimeType = this.getMimeTypeFromExtension(fileExtension);
 
       // Convert to base64
@@ -158,7 +165,9 @@ export class UploadService {
         size: fileInfo.size || 0,
       };
     } catch (error) {
-      throw new Error(`Failed to convert image to base64: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to convert image to base64: ${(error as Error).message}`
+      );
     }
   }
 
@@ -195,19 +204,19 @@ export class UploadService {
    */
   private convertToServiceError(error: unknown): ServiceError {
     if (error instanceof ApiError) {
-      let type: ApiErrorType = 'UNKNOWN_ERROR';
-      
+      let type: ApiErrorType = "UNKNOWN_ERROR";
+
       if (error.status === 0) {
-        type = 'NETWORK_ERROR';
+        type = "NETWORK_ERROR";
       } else if (error.status === 408) {
-        type = 'TIMEOUT_ERROR';
+        type = "TIMEOUT_ERROR";
       } else if (error.status >= 400 && error.status < 500) {
-        if (error.status === 401) type = 'AUTHENTICATION_ERROR';
-        else if (error.status === 403) type = 'AUTHORIZATION_ERROR';
-        else if (error.status === 404) type = 'NOT_FOUND_ERROR';
-        else type = 'VALIDATION_ERROR';
+        if (error.status === 401) type = "AUTHENTICATION_ERROR";
+        else if (error.status === 403) type = "AUTHORIZATION_ERROR";
+        else if (error.status === 404) type = "NOT_FOUND_ERROR";
+        else type = "VALIDATION_ERROR";
       } else if (error.status >= 500) {
-        type = 'SERVER_ERROR';
+        type = "SERVER_ERROR";
       }
 
       return {
@@ -220,8 +229,8 @@ export class UploadService {
     }
 
     return {
-      type: 'UNKNOWN_ERROR',
-      message: (error as Error)?.message || 'An unknown error occurred',
+      type: "UNKNOWN_ERROR",
+      message: (error as Error)?.message || "An unknown error occurred",
       timestamp: new Date().toISOString(),
     };
   }
@@ -236,12 +245,36 @@ export class UploadService {
   ): Promise<UploadResponse> {
     // Simulate upload progress with base64 conversion
     const stages = [
-      { stage: 'preparing' as const, percentage: 15, message: 'Converting image to base64...' },
-      { stage: 'uploading' as const, percentage: 35, message: 'Uploading base64 data...' },
-      { stage: 'uploading' as const, percentage: 65, message: 'Uploading base64 data...' },
-      { stage: 'uploading' as const, percentage: 85, message: 'Processing on server...' },
-      { stage: 'processing' as const, percentage: 95, message: 'Analyzing label...' },
-      { stage: 'completed' as const, percentage: 100, message: 'Upload completed!' },
+      {
+        stage: "preparing" as const,
+        percentage: 15,
+        message: "Converting image to base64...",
+      },
+      {
+        stage: "uploading" as const,
+        percentage: 35,
+        message: "Uploading base64 data...",
+      },
+      {
+        stage: "uploading" as const,
+        percentage: 65,
+        message: "Uploading base64 data...",
+      },
+      {
+        stage: "uploading" as const,
+        percentage: 85,
+        message: "Processing on server...",
+      },
+      {
+        stage: "processing" as const,
+        percentage: 95,
+        message: "Analyzing label...",
+      },
+      {
+        stage: "completed" as const,
+        percentage: 100,
+        message: "Upload completed!",
+      },
     ];
 
     for (const stage of stages) {
@@ -252,7 +285,7 @@ export class UploadService {
         stage: stage.stage,
         message: stage.message,
       });
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 800));
     }
 
     // Return mock response in new format
@@ -260,13 +293,14 @@ export class UploadService {
       id: `mock_${Date.now()}`,
       filename: `label_${Date.now()}.jpg`,
       url: imageUri, // Use original URI for display
-      extractedText: 'Sample Label Text - This is a mock response for testing without backend connection',
+      extractedText:
+        "Sample Label Text - This is a mock response for testing without backend connection",
       confidence: 0.85,
       processingTimeMs: 2500,
       metadata: {
-        originalName: imageUri.split('/').pop() || 'image.jpg',
+        originalName: imageUri.split("/").pop() || "image.jpg",
         size: 1024000, // 1MB mock size
-        mimeType: 'image/jpeg',
+        mimeType: "image/jpeg",
         isMockResponse: true,
       },
       tags: uploadRequest.tags || [],
@@ -295,21 +329,21 @@ export class UploadService {
         loaded: 0,
         total: 100,
         percentage: 0,
-        stage: 'preparing',
-        message: 'Preparing upload...',
+        stage: "preparing",
+        message: "Preparing upload...",
       });
 
       // Validate file if requested
       if (validateFile) {
         const validation = await this.validateImageFile(imageUri);
         if (!validation.isValid) {
-          throw new Error(validation.errors.join(', '));
+          throw new Error(validation.errors.join(", "));
         }
       }
 
       // Use mock upload if in mock mode
       if (API_CONFIG.MOCK_MODE) {
-        console.log('🔧 Using mock upload mode - no real backend connection');
+        console.log("🔧 Using mock upload mode - no real backend connection");
         return await this.mockUpload(imageUri, uploadRequest, onProgress);
       }
 
@@ -318,34 +352,38 @@ export class UploadService {
         loaded: 10,
         total: 100,
         percentage: 10,
-        stage: 'preparing',
-        message: 'Converting image to base64...',
+        stage: "preparing",
+        message: "Converting image to base64...",
       });
 
-      const uploadPayload = await this.createUploadPayload(imageUri, uploadRequest);
+      const uploadPayload = await this.createUploadPayload(
+        imageUri,
+        uploadRequest
+      );
 
       // Start upload
       onProgress?.({
         loaded: 30,
         total: 100,
         percentage: 30,
-        stage: 'uploading',
-        message: 'Uploading base64 data...',
+        stage: "uploading",
+        message: "Uploading base64 data...",
       });
 
-      // Simulate progress during upload (in real implementation, you might get actual progress)
+      // Simulate progress during upload
       const progressInterval = setInterval(() => {
         onProgress?.({
           loaded: Math.min(85, Math.random() * 40 + 30),
           total: 100,
           percentage: Math.min(85, Math.random() * 40 + 30),
-          stage: 'uploading',
-          message: 'Uploading base64 data...',
+          stage: "uploading",
+          message: "Uploading base64 data...",
         });
       }, 500);
 
       try {
-        const response = await this.apiService.post<UploadResponse>(
+        // Call API
+        const response = await this.apiService.post<any>(
           API_CONFIG.ENDPOINTS.EXTRACT_TEXT,
           uploadPayload,
           { timeout }
@@ -353,29 +391,32 @@ export class UploadService {
 
         clearInterval(progressInterval);
 
+        // 🔹 Print backend response to terminal for debugging
+        console.log(
+          "📡 Backend raw response:",
+          JSON.stringify(response, null, 2)
+        );
+
         // Final progress update
         onProgress?.({
           loaded: 100,
           total: 100,
           percentage: 100,
-          stage: 'completed',
-          message: 'Text extraction completed successfully!',
+          stage: "completed",
+          message: "Text extraction completed successfully!",
         });
 
-        // Backend returns: { status: 'success', status_code: 200, data: { extracted_text: '...', ... } }
-        if (!response.success && response.data?.status !== 'success') {
-          throw new Error(response.message || response.data?.error?.message || 'Text extraction failed');
-        }
+        // Use backend data only if needed
+        const backendData = response.data?.data || response.data || {};
 
-        // Transform backend response to frontend format
-        const backendData = response.data?.data || response.data;
+        // 🔹 Build your own frontend response
         const transformedResponse: UploadResponse = {
           id: `extraction_${Date.now()}`,
-          filename: uploadRequest.metadata?.fileName || 'image.jpg',
-          url: imageUri, // Keep original image URI
-          extractedText: backendData.extracted_text || '',
-          confidence: backendData.confidence,
-          processingTimeMs: backendData.processing_time_ms,
+          filename: uploadRequest.metadata?.fileName || "image.jpg",
+          url: imageUri,
+          extractedText: backendData.extracted_text || "",
+          confidence: backendData.confidence ?? null,
+          processingTimeMs: backendData.processing_time_ms ?? null,
           metadata: {
             ...backendData.image_metadata,
             uploadedAt: new Date().toISOString(),
@@ -394,51 +435,33 @@ export class UploadService {
         loaded: 0,
         total: 100,
         percentage: 0,
-        stage: 'error',
-        message: 'Upload failed',
+        stage: "error",
+        message: "Upload failed",
       });
 
       const serviceError = this.convertToServiceError(error);
-      
+
       // Provide user-friendly error messages
       let userMessage = serviceError.message;
       switch (serviceError.type) {
-        case 'NETWORK_ERROR':
+        case "NETWORK_ERROR":
           userMessage = ERROR_MESSAGES.NETWORK.NO_CONNECTION;
           break;
-        case 'TIMEOUT_ERROR':
+        case "TIMEOUT_ERROR":
           userMessage = ERROR_MESSAGES.NETWORK.TIMEOUT;
           break;
-        case 'SERVER_ERROR':
+        case "SERVER_ERROR":
           userMessage = ERROR_MESSAGES.NETWORK.SERVER_ERROR;
           break;
-        case 'VALIDATION_ERROR':
-          userMessage = serviceError.message || ERROR_MESSAGES.UPLOAD.UPLOAD_FAILED;
+        case "VALIDATION_ERROR":
+          userMessage =
+            serviceError.message || ERROR_MESSAGES.UPLOAD.UPLOAD_FAILED;
           break;
         default:
           userMessage = ERROR_MESSAGES.GENERAL.UNKNOWN_ERROR;
       }
 
       throw new Error(userMessage);
-    }
-  }
-
-  /**
-   * Check if backend is available
-   */
-  async checkHealth(): Promise<boolean> {
-    if (API_CONFIG.MOCK_MODE) {
-      return true; // Always available in mock mode
-    }
-
-    try {
-      const response = await this.apiService.get(API_CONFIG.ENDPOINTS.IMAGE_HEALTH, {
-        timeout: 5000, // 5 seconds timeout for health check
-      });
-      return response.success;
-    } catch (error) {
-      console.warn('Backend health check failed:', error);
-      return false;
     }
   }
 
@@ -458,22 +481,34 @@ export class UploadService {
         return await this.uploadImage(imageUri, uploadRequest, uploadOptions);
       } catch (error) {
         lastError = error as Error;
-        
+
         // Don't retry validation errors
-        if (lastError.message.includes('Invalid file format') || 
-            lastError.message.includes('File size exceeds')) {
+        if (
+          lastError.message.includes("Invalid file format") ||
+          lastError.message.includes("File size exceeds")
+        ) {
           throw lastError;
         }
 
         // Wait before retrying (exponential backoff)
         if (attempt < maxRetries) {
           const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s...
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
     }
 
     throw lastError!;
+  }
+
+  async checkHealth(): Promise<boolean> {
+    // Example implementation: ping the backend health endpoint
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/health`);
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 }
 
