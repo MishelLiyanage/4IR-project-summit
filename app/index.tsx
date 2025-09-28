@@ -5,27 +5,45 @@ import { Ionicons } from '@expo/vector-icons';
 
 import CameraComponent from '@/components/CameraComponent';
 import UploadComponent from '@/components/UploadComponent';
+import ResultsDisplay from '@/components/ResultsDisplay';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import type { UploadResponse } from '@/types/api';
 
-type AppState = 'camera' | 'upload';
+type AppState = 'camera' | 'upload' | 'results';
 
 export default function App() {
   const [currentState, setCurrentState] = useState<AppState>('camera');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null);
 
   const handlePhotoTaken = (uri: string) => {
     setSelectedImage(uri);
     setCurrentState('upload');
   };
 
-  const handleUploadComplete = () => {
+  const handleUploadComplete = (result: UploadResponse) => {
+    setUploadResult(result);
+    setCurrentState('results');
+  };
+
+  const handleBackToCamera = () => {
     setSelectedImage(null);
+    setUploadResult(null);
     setCurrentState('camera');
   };
 
   const handleCancel = () => {
     setSelectedImage(null);
+    setUploadResult(null);
     setCurrentState('camera');
+  };
+
+  const handleRetry = () => {
+    if (selectedImage) {
+      setCurrentState('upload');
+    } else {
+      setCurrentState('camera');
+    }
   };
 
   return (
@@ -62,6 +80,14 @@ export default function App() {
           imageUri={selectedImage}
           onUploadComplete={handleUploadComplete}
           onCancel={handleCancel}
+        />
+      )}
+
+      {currentState === 'results' && uploadResult && (
+        <ResultsDisplay
+          uploadResult={uploadResult}
+          onBackToCamera={handleBackToCamera}
+          onRetry={handleRetry}
         />
       )}
     </SafeAreaView>

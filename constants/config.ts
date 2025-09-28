@@ -5,19 +5,39 @@
 export const API_CONFIG = {
   // Base URL for the API - update this with your actual backend URL
   BASE_URL: __DEV__ 
-    ? 'http://localhost:8000'  // Development - your 4IR backend
+    ? 'http://192.168.1.6:8000'  // Development - your 4IR backend (use your machine's IP)
     : 'https://your-production-api.com', // Production
   
   // Mock mode for testing without backend
   MOCK_MODE: false, // Set to true for testing without backend
 
-  // API endpoints
+  // API endpoints - matching 4IR backend structure
   ENDPOINTS: {
+    // Image processing endpoints
     EXTRACT_TEXT: '/images/extract-text',
     IMAGE_HEALTH: '/images/health',
+    
+    // RAG endpoints
+    RAG_QUERY: '/rag/query-regulations',
+    RAG_FORMAT_QUERY: '/rag/format-query',
+    RAG_HEALTH: '/rag/health',
+    
+    // Validation endpoints
+    VALIDATE_COMPLIANCE: '/validation/validate-compliance',
+    FORMAT_VALIDATION_QUERY: '/validation/format-query',
+    VALIDATION_HEALTH: '/validation/health',
+    
+    // User endpoints
+    USERS: '/users',
+    USER_BY_ID: '/users/{id}',
+    USER_BY_EMAIL: '/users/email/{email}',
+    
+    // General health
     HEALTH: '/health',
-    UPLOAD_LABEL: '/labels/upload', // Legacy endpoint
-    LABELS: '/labels', // Legacy endpoint
+    
+    // Legacy endpoints (deprecated)
+    UPLOAD_LABEL: '/labels/upload',
+    LABELS: '/labels',
   },
 
   // Request timeouts (in milliseconds)
@@ -66,12 +86,40 @@ export const ERROR_MESSAGES = {
     INVALID_FORMAT: 'Invalid file format. Please select a valid image file.',
     UPLOAD_FAILED: 'Failed to upload image. Please try again.',
   },
+  IMAGE_PROCESSING: {
+    BASE64_VALIDATION_ERROR: 'Invalid image data. Please try taking a new photo.',
+    IMAGE_SIZE_ERROR: 'Image size is not supported. Please try a different image.',
+    UNSUPPORTED_IMAGE_TYPE: 'Image format not supported. Please use JPEG, PNG, or WebP.',
+    IMAGE_PROCESSING_ERROR: 'Failed to process image. Please try again.',
+    TEXT_EXTRACTION_ERROR: 'Could not extract text from image. Please ensure the image is clear.',
+  },
+  LLM_SERVICE: {
+    TIMEOUT_ERROR: 'Text analysis took too long. Please try again.',
+    SERVICE_ERROR: 'Analysis service is temporarily unavailable. Please try again later.',
+    SERVICE_UNAVAILABLE: 'Text analysis service is down. Please try again later.',
+  },
+  VALIDATION: {
+    COMPLIANCE_CHECK_FAILED: 'Failed to check compliance. Please try again.',
+    VALIDATION_TIMEOUT: 'Compliance validation took too long. Please try again.',
+    INVALID_VALIDATION_DATA: 'Invalid data for compliance check.',
+  },
+  RAG: {
+    REGULATIONS_QUERY_FAILED: 'Failed to find relevant regulations. Please try again.',
+    RAG_TIMEOUT: 'Regulation search took too long. Please try again.',
+    NO_REGULATIONS_FOUND: 'No relevant regulations found for this product.',
+  },
+  PDF: {
+    GENERATION_FAILED: 'Failed to generate PDF report. Please try again.',
+    DOWNLOAD_FAILED: 'Failed to download PDF. Please try again.',
+    SAVE_FAILED: 'Failed to save PDF to device. Please check storage permissions.',
+  },
   CAMERA: {
     PERMISSION_DENIED: 'Camera permission is required to take photos.',
     CAPTURE_FAILED: 'Failed to capture photo. Please try again.',
   },
   GENERAL: {
     UNKNOWN_ERROR: 'An unexpected error occurred. Please try again.',
+    FEATURE_NOT_AVAILABLE: 'This feature is not available right now.',
   },
 } as const;
 

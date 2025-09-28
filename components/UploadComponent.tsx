@@ -13,11 +13,11 @@ import { API_CONFIG } from '../constants/config';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '../constants/theme';
 import { ErrorHandler } from '../services/errorHandler';
 import { uploadService } from '../services/uploadService';
-import type { UploadProgress } from '../types/api';
+import type { UploadProgress, UploadResponse } from '../types/api';
 
 interface UploadComponentProps {
   imageUri: string;
-  onUploadComplete: () => void;
+  onUploadComplete: (result: UploadResponse) => void;
   onCancel: () => void;
 }
 
@@ -56,19 +56,8 @@ export default function UploadComponent({
         }
       );
 
-      Alert.alert(
-        'Text Extraction Successful!',
-        `Text has been extracted from your label photo successfully.${
-          uploadResult.extractedText 
-            ? `\n\nExtracted text: "${uploadResult.extractedText}"` 
-            : ''
-        }${
-          uploadResult.confidence 
-            ? `\n\nConfidence: ${Math.round(uploadResult.confidence * 100)}%` 
-            : ''
-        }`,
-        [{ text: 'OK', onPress: onUploadComplete }]
-      );
+      // Pass the result to the parent component
+      onUploadComplete(uploadResult);
     } catch (error) {
       ErrorHandler.handleUploadError(error as Error, performUpload);
     } finally {
